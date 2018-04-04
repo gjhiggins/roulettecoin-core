@@ -80,6 +80,7 @@ src/qt/bitcoin-qt.includes
 # Compilation and Qt preprocessor part
 *.qm
 Makefile
+Makefile.am.user
 roulettecoin-qt
 Roulettecoin-Qt.app
 background.tiff*
