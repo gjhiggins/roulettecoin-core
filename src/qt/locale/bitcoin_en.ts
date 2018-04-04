@@ -2951,7 +2951,7 @@
     </message>
     <message>
         <location line="+101"/>
-        <source>Warning: Invalid Bitcoin address</source>
+        <source>Warning: Invalid Roulettecoin address</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

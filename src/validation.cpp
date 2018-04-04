@@ -48,7 +48,7 @@
 #include <boost/thread.hpp>
 
 #if defined(NDEBUG)
-# error "Bitcoin cannot be compiled without assertions."
+# error "Roulettecoin cannot be compiled without assertions."
 #endif
 
 #define MICRO 0.000001
@@ -231,7 +231,7 @@ CTxMemPool mempool(&feeEstimator);
 /** Constant stuff for coinbase transactions we create: */
 CScript COINBASE_FLAGS;
 
-const std::string strMessageMagic = "Bitcoin Signed Message:\n";
+const std::string strMessageMagic = "Roulettecoin Signed Message:\n";
 
 // Internal stuff
 namespace {
@@ -1670,7 +1670,7 @@ static bool WriteTxIndexDataForBlock(const CBlock& block, CValidationState& stat
 static CCheckQueue<CScriptCheck> scriptcheckqueue(128);
 
 void ThreadScriptCheck() {
-    RenameThread("bitcoin-scriptch");
+    RenameThread("roulettecoin-scriptch");
     scriptcheckqueue.Thread();
 }
 
@@ -2960,6 +2960,10 @@ bool CheckBlock(const CBlock& block, CValidationState& state, const Consensus::P
 
     if (block.fChecked)
         return true;
+
+    // Roulettecoin: Check reserved fields:
+    if (block.nReserved1 != 0 || block.nReserved2 != 0)
+        return state.DoS(100, error("CheckBlock() : reserved check failed"));
 
     // Check that the header is valid (particularly PoW).  This is mostly
     // redundant with the call in AcceptBlockHeader.

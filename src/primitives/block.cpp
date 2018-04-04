@@ -12,18 +12,18 @@
 
 uint256 CBlockHeader::GetHash() const
 {
-    return SerializeHash(*this);
+    return RouletteHash(BEGIN(nVersion), END(nReserved2)); //return SerializeHash(*this);
 }
 
 std::string CBlock::ToString() const
 {
     std::stringstream s;
-    s << strprintf("CBlock(hash=%s, ver=0x%08x, hashPrevBlock=%s, hashMerkleRoot=%s, nTime=%u, nBits=%08x, nNonce=%u, vtx=%u)\n",
+    s << strprintf("CBlock(hash=%s, ver=0x%08x, hashPrevBlock=%s, hashMerkleRoot=%s, nTime=%u, nBits=%08x, nNonce=%u, nReserved1=%u, nReserved2=%u , vtx=%u)\n",
         GetHash().ToString(),
         nVersion,
         hashPrevBlock.ToString(),
         hashMerkleRoot.ToString(),
-        nTime, nBits, nNonce,
+        nTime, nBits, nNonce, nReserved1, nReserved2,
         vtx.size());
     for (const auto& tx : vtx) {
         s << "  " << tx->ToString() << "\n";

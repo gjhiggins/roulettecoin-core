@@ -10,6 +10,7 @@
 #include <primitives/block.h>
 #include <uint256.h>
 
+// Original Bitcoin
 unsigned int GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlockHeader *pblock, const Consensus::Params& params)
 {
     assert(pindexLast != nullptr);
@@ -53,6 +54,7 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
 
     // Limit adjustment step
     int64_t nActualTimespan = pindexLast->GetBlockTime() - nFirstBlockTime;
+    std::cout << " nActualTimespan = " << nActualTimespan << "  before bounds" << std::endl;
     if (nActualTimespan < params.nPowTargetTimespan/4)
         nActualTimespan = params.nPowTargetTimespan/4;
     if (nActualTimespan > params.nPowTargetTimespan*4)
@@ -68,6 +70,10 @@ unsigned int CalculateNextWorkRequired(const CBlockIndex* pindexLast, int64_t nF
     if (bnNew > bnPowLimit)
         bnNew = bnPowLimit;
 
+    // std::cout << "GetNextWorkRequired RETARGET" << std::endl;
+    // std::cout << "nTargetTimespan = " << nTargetTimespan << " nActualTimespan = " << nActualTimespan << std::endl;
+    // std::cout << "Before: " << pindexLast->nBits << " - " << UintToArith256(pindexLast->nBits).getuint256().ToString().c_str() << std::endl;
+    // std::cout << "After:  " << bnNew.GetCompact() << " - " << bnNew.getuint256().ToString().c_str() << std::endl;
     return bnNew.GetCompact();
 }
 
@@ -81,11 +87,57 @@ bool CheckProofOfWork(uint256 hash, unsigned int nBits, const Consensus::Params&
 
     // Check range
     if (fNegative || bnTarget == 0 || fOverflow || bnTarget > UintToArith256(params.powLimit))
+    {
+        std::cout << "CheckProofOfWork() : nBits below minimum work: " << nBits;
         return false;
+    }
 
     // Check proof of work matches claimed amount
-    if (UintToArith256(hash) > bnTarget)
+    if (UintToArith256(hash) > bnTarget) 
+    {
+        std::cout << "CheckProofOfWork() : hash doesn't match nBits: " << nBits;
         return false;
+    }
 
     return true;
 }
+
+/*
+static const int64_t nStartSubsidy = 50 * COIN;
+static const int64_t nMinSubsidy = 1 * COIN;
+
+int64_t GetBlockValue(int nHeight, int64_t nFees)
+{
+    int64_t nSubsidy = nStartSubsidy;
+
+    // Mining phase: Subsidy is cut in half every SubsidyHalvingInterval
+    nSubsidy >>= (nHeight / Params().SubsidyHalvingInterval());
+    
+    // Inflation phase: Subsidy reaches minimum subsidy
+    // Network is rewarded for transaction processing with transaction fees and 
+    // the inflationary subsidy
+    if (nSubsidy < nMinSubsidy)
+    {
+        nSubsidy = nMinSubsidy;
+    }
+
+    return nSubsidy + nFees;
+}
+
+bool CheckProofOfWork(uint256 hash, unsigned int nBits)
+{
+    CBigNum bnTarget;
+    bnTarget.SetCompact(nBits);
+
+    // Check range
+    if (bnTarget <= 0 || bnTarget > Params().ProofOfWorkLimit())
+        return error("CheckProofOfWork() : nBits below minimum work");
+
+    // Check proof of work matches claimed amount
+    if (hash > bnTarget.getuint256())
+        return error("CheckProofOfWork() : hash doesn't match nBits");
+
+    return true;
+}
+
+*/

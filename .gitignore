@@ -1,13 +1,13 @@
 *.tar.gz
 
 *.exe
-src/bitcoin
-src/bitcoind
-src/bitcoin-cli
-src/bitcoin-tx
-src/test/test_bitcoin
-src/test/test_bitcoin_fuzzy
-src/qt/test/test_bitcoin-qt
+src/roulettecoin
+src/roulettecoind
+src/roulettecoin-cli
+src/roulettecoin-tx
+src/test/test_roulettecoin
+src/test/test_roulettecoin_fuzzy
+src/qt/test/test_roulettecoin-qt
 
 # autoreconf
 Makefile.in
@@ -80,8 +80,8 @@ src/qt/bitcoin-qt.includes
 # Compilation and Qt preprocessor part
 *.qm
 Makefile
-bitcoin-qt
-Bitcoin-Qt.app
+roulettecoin-qt
+Roulettecoin-Qt.app
 background.tiff*
 
 # Unit-tests

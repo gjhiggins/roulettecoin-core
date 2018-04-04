@@ -2285,8 +2285,8 @@
         <translation><numerusform>Estimated to begin confirmation within %n block.</numerusform><numerusform>Estimated to begin confirmation within %n blocks.</numerusform></translation>
     </message>
     <message>
-        <source>Warning: Invalid Bitcoin address</source>
-        <translation>Warning: Invalid Bitcoin address</translation>
+        <source>Warning: Invalid Roulettecoin address</source>
+        <translation>Warning: Invalid Roulettecoin address</translation>
     </message>
     <message>
         <source>Warning: Unknown change address</source>

@@ -27,6 +27,8 @@ public:
     uint32_t nTime;
     uint32_t nBits;
     uint32_t nNonce;
+    uint32_t nReserved1;
+    uint32_t nReserved2;
 
     CBlockHeader()
     {
@@ -43,6 +45,8 @@ public:
         READWRITE(nTime);
         READWRITE(nBits);
         READWRITE(nNonce);
+        READWRITE(nReserved1);
+        READWRITE(nReserved2);
     }
 
     void SetNull()
@@ -53,6 +57,8 @@ public:
         nTime = 0;
         nBits = 0;
         nNonce = 0;
+        nReserved1 = 0;
+        nReserved2 = 0;
     }
 
     bool IsNull() const
@@ -113,6 +119,8 @@ public:
         block.nTime          = nTime;
         block.nBits          = nBits;
         block.nNonce         = nNonce;
+        block.nReserved1     = nReserved1;
+        block.nReserved2     = nReserved2;
         return block;
     }
 

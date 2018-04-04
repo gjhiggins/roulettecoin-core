@@ -265,6 +265,7 @@ AC_DEFUN([BITCOIN_QT_CONFIGURE],[
   AC_MSG_RESULT([$bitcoin_enable_qt (Qt${bitcoin_qt_got_major_vers})])
 
   AC_SUBST(QT_PIE_FLAGS)
+  AC_SUBST(QT_PIC_FLAGS)
   AC_SUBST(QT_INCLUDES)
   AC_SUBST(QT_LIBS)
   AC_SUBST(QT_LDFLAGS)

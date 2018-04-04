@@ -3092,6 +3092,7 @@ bool CWallet::CommitTransaction(CWalletTx& wtxNew, CReserveKey& reservekey, CCon
 
         if (fBroadcastTransactions)
         {
+            CValidationState state;
             // Broadcast
             if (!wtx.AcceptToMemoryPool(maxTxFee, state)) {
                 LogPrintf("CommitTransaction(): Transaction cannot be broadcast immediately, %s\n", state.GetRejectReason());

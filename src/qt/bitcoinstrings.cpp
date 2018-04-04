@@ -9,7 +9,7 @@
 #define UNUSED
 #endif
 static const char UNUSED *bitcoin_strings[] = {
-QT_TRANSLATE_NOOP("bitcoin-core", "Bitcoin Core"),
+QT_TRANSLATE_NOOP("bitcoin-core", "Roulettecoin"),
 QT_TRANSLATE_NOOP("bitcoin-core", "The %s developers"),
 QT_TRANSLATE_NOOP("bitcoin-core", ""
 "(1 = keep tx meta data e.g. account owner and payment request information, 2 "
@@ -71,6 +71,9 @@ QT_TRANSLATE_NOOP("bitcoin-core", ""
 QT_TRANSLATE_NOOP("bitcoin-core", ""
 "Error loading wallet %s. -wallet parameter must only specify a filename (not "
 "a path)."),
+QT_TRANSLATE_NOOP("bitcoin-core", ""
+QT_TRANSLATE_NOOP("bitcoin-core", ""
+"Error loading %s: You can't enable HD on a already existing non-HD wallet"),
 QT_TRANSLATE_NOOP("bitcoin-core", ""
 "Error reading %s! All keys read correctly, but transaction data or address "
 "book entries might be missing or incorrect."),
