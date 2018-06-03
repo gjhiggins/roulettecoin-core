@@ -38,6 +38,21 @@ static const bool DEFAULT_LOGIPS        = false;
 static const bool DEFAULT_LOGTIMESTAMPS = true;
 extern const char * const DEFAULT_DEBUGLOGFILE;
 
+
+// Align by increasing pointer, must have extra space at end of buffer
+template <size_t nBytes, typename T>
+T* alignup(T* p)
+{
+    union
+    {
+        T* ptr;
+        size_t n;
+    } u;
+    u.ptr = p;
+    u.n = (u.n + (nBytes-1)) & ~(nBytes-1);
+    return u.ptr;
+}
+
 /** Signals for translation. */
 class CTranslationInterface
 {
@@ -309,6 +324,12 @@ std::string HelpMessageOpt(const std::string& option, const std::string& message
 int GetNumCores();
 
 void RenameThread(const char* name);
+
+inline uint32_t ByteReverse(uint32_t value)
+{
+    value = ((value & 0xFF00FF00) >> 8) | ((value & 0x00FF00FF) << 8);
+    return (value<<16) | (value>>16);
+}
 
 /**
  * .. and a wrapper that just calls func once

@@ -29,6 +29,10 @@
 #include <memory>
 #include <stdint.h>
 
+#include <univalue.h>
+
+extern uint64_t nHashesPerSec;
+
 unsigned int ParseConfirmTarget(const UniValue& value)
 {
     int target = value.get_int();
@@ -143,10 +147,7 @@ UniValue generateBlocks(std::shared_ptr<CReserveScript> coinbaseScript, int nGen
         blockHashes.push_back(pblock->GetHash().GetHex());
 
         //mark script as important because it was used at least for one coinbase output if the script came from the wallet
-        if (keepScript)
-        {
-            coinbaseScript->KeepScript();
-        }
+        coinbaseScript->KeepScript();
     }
     return blockHashes;
 }
@@ -198,6 +199,7 @@ UniValue getmininginfo(const JSONRPCRequest& request)
             "  \"currentblocktx\": nnn,     (numeric) The last block transaction\n"
             "  \"difficulty\": xxx.xxxxx    (numeric) The current difficulty\n"
             "  \"networkhashps\": nnn,      (numeric) The network hashes per second\n"
+            "  \"hashespersec\": nnn,       (numeric) The hashes per second of built-in miner\n"
             "  \"pooledtx\": n              (numeric) The size of the mempool\n"
             "  \"chain\": \"xxxx\",           (string) current network name as defined in BIP70 (main, test, regtest)\n"
             "  \"warnings\": \"...\"          (string) any network and blockchain warnings\n"
@@ -217,6 +219,7 @@ UniValue getmininginfo(const JSONRPCRequest& request)
     obj.push_back(Pair("currentblocktx",   (uint64_t)nLastBlockTx));
     obj.push_back(Pair("difficulty",       (double)GetDifficulty()));
     obj.push_back(Pair("networkhashps",    getnetworkhashps(request)));
+    obj.push_back(Pair("hashespersec",     (uint64_t)nHashesPerSec));
     obj.push_back(Pair("pooledtx",         (uint64_t)mempool.size()));
     obj.push_back(Pair("chain",            Params().NetworkIDString()));
     if (IsDeprecatedRPCEnabled("getmininginfo")) {
@@ -728,10 +731,6 @@ UniValue submitblock(const JSONRPCRequest& request)
         throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block does not start with a coinbase");
     }
 
-    if (block.vtx.empty() || !block.vtx[0]->IsCoinBase()) {
-        throw JSONRPCError(RPC_DESERIALIZATION_ERROR, "Block does not start with a coinbase");
-    }
-
     uint256 hash = block.GetHash();
     bool fBlockPresent = false;
     {
@@ -978,6 +977,76 @@ UniValue estimaterawfee(const JSONRPCRequest& request)
     return result;
 }
 
+
+UniValue getgenerate(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() != 0)
+        throw std::runtime_error(
+            "getgenerate\n"
+            "\nReturn if the server is set to generate coins or not. The default is false.\n"
+            "It is set with the command line argument -gen (or roulettecoin.conf setting gen)\n"
+            "It can also be set with the setgenerate call.\n"
+            "\nResult\n"
+            "true|false      (boolean) If the server is set to generate coins or not\n"
+            "\nExamples:\n"
+            + HelpExampleCli("getgenerate", "")
+            + HelpExampleRpc("getgenerate", "")
+        );
+
+    LOCK(cs_main);
+    return gArgs.GetBoolArg("-gen", DEFAULT_GENERATE);
+}
+
+UniValue setgenerate(const JSONRPCRequest& request)
+{
+    if (request.fHelp || request.params.size() < 1 || request.params.size() > 2)
+        throw std::runtime_error(
+            "setgenerate generate ( genproclimit )\n"
+            "\nSet 'generate' true or false to turn generation on or off.\n"
+            "Generation is limited to 'genproclimit' processors, -1 is unlimited.\n"
+            "See the getgenerate call for the current setting.\n"
+            "\nArguments:\n"
+            "1. generate         (boolean, required) Set to true to turn on generation, false to turn off.\n"
+            "2. genproclimit     (numeric, optional) Set the processor limit for when generation is on. Can be -1 for unlimited.\n"
+            "\nExamples:\n"
+            "\nSet the generation on with a limit of one processor\n"
+            + HelpExampleCli("setgenerate", "true 1") +
+            "\nCheck the setting\n"
+            + HelpExampleCli("getgenerate", "") +
+            "\nTurn off generation\n"
+            + HelpExampleCli("setgenerate", "false") +
+            "\nUsing json rpc\n"
+            + HelpExampleRpc("setgenerate", "true, 1")
+        );
+
+    if (Params().MineBlocksOnDemand())
+        throw JSONRPCError(RPC_METHOD_NOT_FOUND, "Use the generate method instead of setgenerate on this network");
+
+
+    bool fGenerate = true;
+    if (request.params.size() > 0)
+        fGenerate = request.params[0].get_bool();
+
+    int nGenProcLimit = gArgs.GetArg("-genproclimit", DEFAULT_GENERATE_THREADS);
+    if (request.params.size() > 1)
+    {
+        nGenProcLimit = request.params[1].get_int();
+        if (nGenProcLimit == 0)
+            fGenerate = false;
+    }
+
+    gArgs.SoftSetArg("-gen", (fGenerate ? "1" : "0"));
+    gArgs.SoftSetArg("-genproclimit", itostr(nGenProcLimit));
+    //mapArgs["-gen"] = (fGenerate ? "1" : "0");
+    //mapArgs ["-genproclimit"] = itostr(nGenProcLimit);
+    int numCores = GenerateRoulettecoins(fGenerate, nGenProcLimit, Params());
+
+    nGenProcLimit = nGenProcLimit >= 0 ? nGenProcLimit : numCores;
+    std::string msg = std::to_string(nGenProcLimit) + " of " + std::to_string(numCores);
+    return msg;
+}
+
+
 static const CRPCCommand commands[] =
 { //  category              name                      actor (function)         argNames
   //  --------------------- ------------------------  -----------------------  ----------
@@ -987,6 +1056,9 @@ static const CRPCCommand commands[] =
     { "mining",             "getblocktemplate",       &getblocktemplate,       {"template_request"} },
     { "mining",             "submitblock",            &submitblock,            {"hexdata","dummy"} },
 
+    /* Coin generation */
+    { "generating",         "getgenerate",            &getgenerate,            {}  },
+    { "generating",         "setgenerate",            &setgenerate,            {"generate", "genproclimit"}  },
 
     { "generating",         "generatetoaddress",      &generatetoaddress,      {"nblocks","address","maxtries"} },
 

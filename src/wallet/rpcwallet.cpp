@@ -10,6 +10,7 @@
 #include <core_io.h>
 #include <httpserver.h>
 #include <validation.h>
+#include <miner.h>
 #include <net.h>
 #include <policy/feerate.h>
 #include <policy/fees.h>
@@ -402,7 +403,7 @@ UniValue getaddressesbyaccount(const JSONRPCRequest& request)
     return ret;
 }
 
-static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control)
+static void SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, CWalletTx& wtxNew, const CCoinControl& coin_control, const std::string &txData="")
 {
     CAmount curBalance = pwallet->GetBalance();
 
@@ -448,9 +449,9 @@ UniValue sendtoaddress(const JSONRPCRequest& request)
     }
 
 
-    if (request.fHelp || request.params.size() < 2 || request.params.size() > 5)
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 6)
         throw std::runtime_error(
-            "sendtoaddress \"address\" amount ( \"comment\" \"comment-to\" subtractfeefromamount )\n"
+            "sendtoaddress \"address\" amount ( \"comment\" \"comment-to\" subtractfeefromamount data)\n"
             "\nSend an amount to a given address.\n"
             + HelpRequiringPassphrase(pwallet) +
             "\nArguments:\n"
