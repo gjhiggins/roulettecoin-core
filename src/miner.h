@@ -21,11 +21,7 @@ class CWallet;
 
 namespace Consensus { struct Params; };
 
-static const bool DEFAULT_GENERATE = false;
-static const int DEFAULT_GENERATE_THREADS = 1;
 static const bool DEFAULT_PRINTPRIORITY = false;
-extern double dHashesPerSec;
-extern int64_t nHPSTimerStart;
 
 struct CBlockTemplate
 {
@@ -34,15 +30,6 @@ struct CBlockTemplate
     std::vector<int64_t> vTxSigOpsCost;
     std::vector<unsigned char> vchCoinbaseCommitment;
 };
-
-
-/** Run the miner threads */
-void GenerateBitcoins(bool fGenerate, int nThreads, const CChainParams& chainparams);
-void GenerateRoulettecoins(bool fGenerate, int nThreads, const CChainParams& chainparams);
-void GenerateRoulettecoins(bool fGenerate, int nThreads, const CChainParams& chainparams, CWallet *pwallet);
-/** Do mining precalculation */
-void FormatHashBuffers(CBlock* pblock, char* pmidstate, char* pdata, char* phash1);
-
 
 // Container for tracking updates to ancestor feerate as we include (parent)
 // transactions in a block
@@ -210,4 +197,5 @@ private:
 void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned int& nExtraNonce);
 int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev);
 
+int GenerateRoulettecoins(bool fGenerate, int nThreads, const CChainParams& chainparams);
 #endif // BITCOIN_MINER_H

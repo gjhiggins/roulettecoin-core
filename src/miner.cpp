@@ -10,6 +10,7 @@
 #include <chain.h>
 #include <chainparams.h>
 #include <coins.h>
+#include <compat.h>
 #include <consensus/consensus.h>
 #include <consensus/tx_verify.h>
 #include <consensus/merkle.h>
@@ -29,14 +30,19 @@
 #include <validationinterface.h>
 #include <wallet/wallet.h>
 
+#include "wallet/wallet.h"
+//#include "wallet/rpcwallet.h"
+
+
+#include <boost/thread.hpp>
 #include <algorithm>
 #include <queue>
 #include <utility>
 
-#include <boost/thread.hpp>
 #include <boost/tuple/tuple.hpp>
 #include <openssl/sha.h>
 
+extern std::vector<CWalletRef> vpwallets;
 //////////////////////////////////////////////////////////////////////////////
 //
 // BitcoinMiner
@@ -45,8 +51,6 @@
 unsigned int nTransactionsUpdated = 0;
 uint256 hashBestChain = ArithToUint256(0);
 CBlockIndex* pindexBest = NULL;
-int64_t nHPSTimerStart = 0;
-double dHashesPerSec = 0.0;
 
 
 //
@@ -57,6 +61,10 @@ double dHashesPerSec = 0.0;
 
 uint64_t nLastBlockTx = 0;
 uint64_t nLastBlockWeight = 0;
+uint64_t nMiningTimeStart = 0;
+uint64_t nHashesPerSec = 0;
+uint64_t nHashesDone = 0;
+
 
 int64_t UpdateTime(CBlockHeader* pblock, const Consensus::Params& consensusParams, const CBlockIndex* pindexPrev)
 {
@@ -476,290 +484,204 @@ void IncrementExtraNonce(CBlock* pblock, const CBlockIndex* pindexPrev, unsigned
 //
 // Internal miner
 //
-
-int static FormatHashBlocks(void* pbuffer, unsigned int len)
+static bool ProcessBlockFound(const CBlock* pblock, const CChainParams& chainparams)
 {
-    unsigned char* pdata = (unsigned char*)pbuffer;
-    unsigned int blocks = 1 + ((len + 8) / 64);
-    unsigned char* pend = pdata + 64 * blocks;
-    memset(pdata + len, 0, 64 * blocks - len);
-    pdata[len] = 0x80;
-    unsigned int bits = len * 8;
-    pend[-1] = (bits >> 0) & 0xff;
-    pend[-2] = (bits >> 8) & 0xff;
-    pend[-3] = (bits >> 16) & 0xff;
-    pend[-4] = (bits >> 24) & 0xff;
-    return blocks;
-}
-
-static const unsigned int pSHA256InitState[8] =
-{0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19};
-
-void SHA256Transform(void* pstate, void* pinput, const void* pinit)
-{
-    SHA256_CTX ctx;
-    unsigned char data[64];
-
-    SHA256_Init(&ctx);
-
-    for (int i = 0; i < 16; i++)
-        ((uint32_t*)data)[i] = ByteReverse(((uint32_t*)pinput)[i]);
-
-    for (int i = 0; i < 8; i++)
-        ctx.h[i] = ((uint32_t*)pinit)[i];
-
-    SHA256_Update(&ctx, data, sizeof(data));
-    for (int i = 0; i < 8; i++)
-        ((uint32_t*)pstate)[i] = ctx.h[i];
-}
-
-void FormatHashBuffers(CBlock* pblock, char* pmidstate, char* pdata, char* phash1)
-{
-    //
-    // Pre-build hash buffers
-    //
-    struct
-    {
-        struct unnamed2
-        {
-            int nVersion;
-            uint256 hashPrevBlock;
-            uint256 hashMerkleRoot;
-            unsigned int nTime;
-            unsigned int nBits;
-            unsigned int nNonce;
-            unsigned int nReserved1;
-            unsigned int nReserved2;
-        }
-        block;
-        unsigned char pchPadding0[64];
-        uint256 hash1;
-        unsigned char pchPadding1[64];
-    }
-    tmp;
-    memset(&tmp, 0, sizeof(tmp));
-
-    tmp.block.nVersion       = pblock->nVersion;
-    tmp.block.hashPrevBlock  = pblock->hashPrevBlock;
-    tmp.block.hashMerkleRoot = pblock->hashMerkleRoot;
-    tmp.block.nTime          = pblock->nTime;
-    tmp.block.nBits          = pblock->nBits;
-    tmp.block.nNonce         = pblock->nNonce;
-    tmp.block.nReserved1     = pblock->nReserved1;
-    tmp.block.nReserved2     = pblock->nReserved2;
-
-    FormatHashBlocks(&tmp.block, sizeof(tmp.block));
-    FormatHashBlocks(&tmp.hash1, sizeof(tmp.hash1));
-
-    // Byte swap all the input buffer
-    for (unsigned int i = 0; i < sizeof(tmp)/4; i++)
-        ((unsigned int*)&tmp)[i] = ByteReverse(((unsigned int*)&tmp)[i]);
-
-    // Precalc the first half of the first hash, which stays constant
-    SHA256Transform(pmidstate, &tmp.block, pSHA256InitState);
-
-    memcpy(pdata, &tmp.block, 128);
-    memcpy(phash1, &tmp.hash1, 64);
-}
-
-bool CheckWork(CBlock* pblock, CWallet *wallet, CReserveKey& reservekey)
-{
-    uint256 hash = pblock->GetHash();
-    // uint256 hashTarget = CBigNum().SetCompact(pblock->nBits).getuint256();
-    arith_uint256 hashTarget = arith_uint256().SetCompact(pblock->nBits);
-
-
-    if (UintToArith256(hash) > hashTarget)
-        return false;
-
-    //// debug print
-    printf("RoulettecoinMiner:\n");
-    // printf("proof-of-work found  \n  hash: 08%x  \ntarget: %08x\n", hash, hashTarget);
-    printf("%s", pblock->ToString().c_str());
-    // printf("generated %s\n", FormatMoney(pblock->vtx[0].vout[0].nValue).c_str());
+    LogPrintf("%s\n", pblock->ToString());
+    LogPrintf("generated %s\n", FormatMoney(pblock->vtx[0]->vout[0].nValue));
 
     // Found a solution
     {
         LOCK(cs_main);
         if (pblock->hashPrevBlock != chainActive.Tip()->GetBlockHash())
-            return error("RoulettecoinMiner : generated block is stale");
-
-        // Remove key from key pool
-        reservekey.KeepKey();
-
-        // Track how many getdata requests this block gets
-        {
-            LOCK(wallet->cs_wallet);
-            wallet->mapRequestCount[pblock->GetHash()] = 0;
-        }
-
-        // Process this block the same as if we had received it from another node
-        std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(*pblock);
-        if (!ProcessNewBlock(Params(), shared_pblock, true, nullptr))
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "RoulettecoinMiner : ProcessNewBlock, block not accepted");
+            return error("ProcessBlockFound -- generated block is stale");
     }
+
+    // Inform about the new block
+    GetMainSignals().BlockFound(pblock->GetHash());
+
+    // Process this block the same as if we had received it from another node
+    //CValidationState state;
+    //std::shared_ptr<CBlock> shared_pblock = std::make_shared<CBlock>(pblock);
+    std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(*pblock);
+    if (!ProcessNewBlock(chainparams, shared_pblock, true, nullptr))
+        return error("ProcessBlockFound -- ProcessNewBlock() failed, block not accepted");
 
     return true;
 }
 
-// void static RoulettecoinMiner(CWallet *pwallet)
-void static RoulettecoinMiner(const CChainParams& chainparams, CWallet *pwallet)
+CWallet *GetFirstWallet() {
+    while(vpwallets.size() == 0){
+        MilliSleep(100);
+
+    }
+    if (vpwallets.size() == 0)
+        return(NULL);
+    return(vpwallets[0]);
+}
+
+void static RoulettecoinMiner(const CChainParams& chainparams)
 {
-    printf("RoulettecoinMiner started\n");
-    // SetThreadPriority(THREAD_PRIORITY_LOWEST);
+    LogPrintf("RoulettecoinMiner -- started\n");
+    // SetThreadPriority(20/*THREAD_PRIORITY_LOWEST*/);
     RenameThread("roulettecoin-miner");
 
-    // Each thread has its own key and counter
-    CReserveKey reservekey(pwallet);
     unsigned int nExtraNonce = 0;
 
-    std::shared_ptr<CReserveScript> coinbase_script;
-    // pwallet->GetScriptForMining(coinbase_script);
+
+    CWallet *  pWallet = GetFirstWallet();
+
+    if (!EnsureWalletIsAvailable(pWallet, false)) {
+        LogPrintf("RoulettecoinMiner -- Wallet not available\n");
+    }
+
+    if (pWallet == NULL)
+        LogPrintf("pWallet is NULL\n");
+
+
+    std::shared_ptr<CReserveScript> coinbaseScript;
+
+    pWallet->GetScriptForMining(coinbaseScript);
+
+    //GetMainSignals().ScriptForMining(coinbaseScript);
+
+    if (!coinbaseScript)
+        LogPrintf("coinbaseScript is NULL\n");
+
+    if (coinbaseScript->reserveScript.empty())
+        LogPrintf("coinbaseScript is empty\n");
 
     try {
-        while (true) {
-        /*
-        if (!chainparams.MineBlocksOnDemand()) {
-            // Busy-wait for the network to come online so we don't waste time mining
-            // on an obsolete chain. In regtest mode we expect to fly solo.
-            do {
-                bool fvNodesEmpty;
-                {
-                    LOCK(g_connman->cs_vNodes);
-                    fvNodesEmpty = g_connman->cs_vNodes.empty();
-                }
-                if (!fvNodesEmpty && !IsInitialBlockDownload())
-                    break;
-                MilliSleep(1000);
-            } while (true);
-        }
-        */
-
-        //
-        // Create new block
-        //
-        unsigned int nTransactionsUpdatedLast = nTransactionsUpdated;
-        CBlockIndex* pindexPrev = pindexBest;
-
-        // static const int nInnerLoopCount = 0xffff0000;
-
-        std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbase_script->reserveScript));
-        if (!pblocktemplate.get())
-            throw JSONRPCError(RPC_INTERNAL_ERROR, "Couldn't create new block");
-        CBlock *pblock = &pblocktemplate->block;
+        // Throw an error if no script was provided.  This can happen
+        // due to some internal error but also if the keypool is empty.
+        // In the latter case, already the pointer is NULL.
+        if (!coinbaseScript || coinbaseScript->reserveScript.empty())
         {
-            LOCK(cs_main);
-            IncrementExtraNonce(pblock, chainActive.Tip(), nExtraNonce);
+            throw std::runtime_error("No coinbase script available (mining requires a wallet)");
         }
-        printf("Running RoulettecoinMiner with %ld transactions in block (%lu bytes)\n", pblock->vtx.size(), ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
 
-        //
-        // Pre-build hash buffers
-        //
-        char pmidstatebuf[32+16]; char* pmidstate = alignup<16>(pmidstatebuf);
-        char pdatabuf[128+16];    char* pdata     = alignup<16>(pdatabuf);
-        char phash1buf[64+16];    char* phash1    = alignup<16>(phash1buf);
-
-        FormatHashBuffers(pblock, pmidstate, pdata, phash1);
-
-        unsigned int& nBlockTime = *(unsigned int*)(pdata + 64 + 4);
-        unsigned int& nBlockBits = *(unsigned int*)(pdata + 64 + 8);
-        //unsigned int& nBlockNonce = *(unsigned int*)(pdata + 64 + 12);
-
-
-        //
-        // Search
-        //
-        int64_t nStart = GetTime();
-        arith_uint256 hashTarget = arith_uint256().SetCompact(pblock->nBits);
 
         while (true) {
-            unsigned int nHashesDone = 0;
 
-            uint256 thash;
-            while (true) {
-                thash = RouletteHash(BEGIN(pblock->nVersion), END(pblock->nReserved2));
-
-                if (UintToArith256(thash) <= hashTarget)
-                {
-                    // Found a solution
-                    // SetThreadPriority(THREAD_PRIORITY_NORMAL);
-                    CheckWork(pblock, pwallet, reservekey);
-                    // SetThreadPriority(THREAD_PRIORITY_LOWEST);
-                    break;
-                }
-                pblock->nNonce += 1;
-                nHashesDone += 1;
-                if ((pblock->nNonce & 0xFF) == 0)
-                    break;
-            }
-
-            // Meter hashes/sec
-            static int64_t nHashCounter;
-            if (nHPSTimerStart == 0)
-            {
-                nHPSTimerStart = GetTimeMillis();
-                nHashCounter = 0;
-            }
-            else
-                nHashCounter += nHashesDone;
-            if (GetTimeMillis() - nHPSTimerStart > 4000)
-            {
-                static CCriticalSection cs;
-                {
-                    LOCK(cs);
-                    if (GetTimeMillis() - nHPSTimerStart > 4000)
-                    {
-                        dHashesPerSec = 1000.0 * nHashCounter / (GetTimeMillis() - nHPSTimerStart);
-                        nHPSTimerStart = GetTimeMillis();
-                        nHashCounter = 0;
-                        static int64_t nLogTime;
-                        if (GetTime() - nLogTime > 30 * 60)
-                        {
-                            nLogTime = GetTime();
-                            printf("hashmeter %6.0f khash/s\n", dHashesPerSec/1000.0);
-                        }
+            if (chainparams.MiningRequiresPeers()) {
+                // Busy-wait for the network to come online so we don't waste time mining
+                // on an obsolete chain. In regtest mode we expect to fly solo.
+                do {
+                    if ((g_connman->GetNodeCount(CConnman::CONNECTIONS_ALL) > 0) && !IsInitialBlockDownload()) {
+                        break;
                     }
-                }
+
+                    MilliSleep(1000);
+                } while (true);
             }
 
-            // Check for stop or if block needs to be rebuilt
-            boost::this_thread::interruption_point();
-            // if (vNodes.empty())
-            //    break;
-            if (pblock->nNonce >= 0xffff0000)
-                break;
-            if (nTransactionsUpdated != nTransactionsUpdatedLast && GetTime() - nStart > 60)
-                break;
-            if (pindexPrev != pindexBest)
-                break;
 
-            // Update nTime every few seconds
-            UpdateTime(pblock, Params().GetConsensus(), pindexPrev);
-            nBlockTime = ByteReverse(pblock->nTime);
-            if (gArgs.GetBoolArg("testnet", false))
+            //
+            // Create new block
+            //
+            LogPrintf("Getting transactions");
+            unsigned int nTransactionsUpdatedLast = mempool.GetTransactionsUpdated();
+            CBlockIndex* pindexPrev = chainActive.Tip();
+            if(!pindexPrev) break;
+
+
+            LogPrintf("Creating New block");
+
+            std::unique_ptr<CBlockTemplate> pblocktemplate(BlockAssembler(Params()).CreateNewBlock(coinbaseScript->reserveScript));
+
+            if (!pblocktemplate.get())
             {
-                // Changing pblock->nTime can change work required on testnet:
-                nBlockBits = ByteReverse(pblock->nBits);
-                hashTarget = arith_uint256().SetCompact(pblock->nBits);
+                LogPrintf("RoulettecoinMiner -- Keypool ran out, please call keypoolrefill before restarting the mining thread\n");
+                return;
+            }
+            CBlock *pblock = &pblocktemplate->block;
+            IncrementExtraNonce(pblock, pindexPrev, nExtraNonce);
+
+            LogPrintf("RoulettecoinMiner -- Running miner with %u transactions in block (%u bytes)\n", pblock->vtx.size(),
+                ::GetSerializeSize(*pblock, SER_NETWORK, PROTOCOL_VERSION));
+
+            //
+            // Search
+            //
+            LogPrintf("Searching for a valid hash ...");
+            int64_t nStart = GetTime();
+            arith_uint256 hashTarget = arith_uint256().SetCompact(pblock->nBits);
+            while (true)
+            {
+
+                uint256 hash;
+                while (true)
+                {
+                    hash = pblock->GetHash();
+                    if (UintToArith256(hash) <= hashTarget)
+                    {
+                        // Found a solution
+                        // SetThreadPriority(0/*THREAD_PRIORITY_NORMAL*/);
+                        LogPrintf("RoulettecoinMiner:\n  proof-of-work found\n  hash: %s\n  target: %s\n", hash.GetHex(), hashTarget.GetHex());
+                        ProcessBlockFound(pblock, chainparams);
+                        // SetThreadPriority(20/*THREAD_PRIORITY_LOWEST*/);
+                        coinbaseScript->KeepScript();
+
+                        // In regression test mode, stop mining after a block is found. This
+                        // allows developers to controllably generate a block on demand.
+                        if (chainparams.MineBlocksOnDemand())
+                            throw boost::thread_interrupted();
+
+                        break;
+                    }
+                    pblock->nNonce += 1;
+                    nHashesDone += 1;
+                    if (nHashesDone % 500000 == 0) {   //Calculate hashing speed
+                        nHashesPerSec = nHashesDone / (((GetTimeMicros() - nMiningTimeStart) / 1000000) + 1);
+                    } 
+                    if ((pblock->nNonce & 0xFF) == 0)
+                        break;
+                }
+
+                // Check for stop or if block needs to be rebuilt
+                boost::this_thread::interruption_point();
+                // Regtest mode doesn't require peers
+                //if (vNodes.empty() && chainparams.MiningRequiresPeers())
+                //    break;
+                if (pblock->nNonce >= 0xffff0000)
+                    break;
+                if (mempool.GetTransactionsUpdated() != nTransactionsUpdatedLast && GetTime() - nStart > 60)
+                    break;
+                if (pindexPrev != chainActive.Tip())
+                    break;
+
+                // Update nTime every few seconds
+                if (UpdateTime(pblock, chainparams.GetConsensus(), pindexPrev) < 0)
+                    break; // Recreate the block if the clock has run backwards,
+                           // so that we can use the correct time.
+                if (chainparams.GetConsensus().fPowAllowMinDifficultyBlocks)
+                {
+                    // Changing pblock->nTime can change work required on testnet:
+                    hashTarget.SetCompact(pblock->nBits);
+                }
             }
         }
-    } }
-    catch (boost::thread_interrupted)
+    }
+    catch (const boost::thread_interrupted&)
     {
-        printf("RoulettecoinMiner terminated\n");
+        LogPrintf("RoulettecoinMiner -- terminated\n");
         throw;
+    }
+    catch (const std::runtime_error &e)
+    {
+        LogPrintf("RoulettecoinMiner -- runtime error: %s\n", e.what());
+        return;
     }
 }
 
-// void GenerateRoulettecoins(bool fGenerate, CWallet* pwallet)
-void GenerateRoulettecoins(bool fGenerate, int nThreads, const CChainParams& chainparams,  CWallet* pwallet)
+int GenerateRoulettecoins(bool fGenerate, int nThreads, const CChainParams& chainparams)
 {
+
     static boost::thread_group* minerThreads = NULL;
 
     // int nThreads = gArgs.GetArg("genproclimit", -1);
+    int numCores = GetNumCores();
     if (nThreads < 0)
-        nThreads = GetNumCores();
+        nThreads = numCores;
 
     if (minerThreads != NULL)
     {
@@ -769,10 +691,18 @@ void GenerateRoulettecoins(bool fGenerate, int nThreads, const CChainParams& cha
     }
 
     if (nThreads == 0 || !fGenerate)
-        return;
+        return numCores;
 
     minerThreads = new boost::thread_group();
-    for (int i = 0; i < nThreads; i++)
-        minerThreads->create_thread(boost::bind(&RoulettecoinMiner, boost::cref(chainparams), pwallet));
-        // minerThreads->create_thread(boost::bind(&RoulettecoinMiner, boost::cref(chainparams), boost::cref(pwallet)));
+    
+    //Reset metrics
+    nMiningTimeStart = GetTimeMicros();
+    nHashesDone = 0;
+    nHashesPerSec = 0;
+
+    for (int i = 0; i < nThreads; i++){
+        minerThreads->create_thread(boost::bind(&RoulettecoinMiner, boost::cref(chainparams)));
+    }
+
+    return(numCores);
 }

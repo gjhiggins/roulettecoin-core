@@ -32,6 +32,7 @@
 #include <rpc/register.h>
 #include <rpc/safemode.h>
 #include <rpc/blockchain.h>
+#include <rpc/mining.h>
 #include <script/standard.h>
 #include <script/sigcache.h>
 #include <scheduler.h>
@@ -184,7 +185,6 @@ void Shutdown()
     RenameThread("roulettecoin-shutoff");
     mempool.AddTransactionsUpdated(1);
 
-    GenerateRoulettecoins(false, 0, Params(), NULL);
     StopHTTPRPC();
     StopREST();
     StopRPC();
@@ -192,6 +192,8 @@ void Shutdown()
 #ifdef ENABLE_WALLET
     FlushWallets();
 #endif
+    GenerateRoulettecoins(false, 0, Params());
+
     MapPort(false);
 
     // Because these depend on each-other, we make sure that neither can be
@@ -1281,6 +1283,11 @@ bool AppInitMain()
     if (!VerifyWallets())
         return false;
 #endif
+
+    bool fGenerate = gArgs.GetBoolArg("-regtest", false) ? false : DEFAULT_GENERATE;
+    // Generate coins in the background
+    GenerateRoulettecoins(fGenerate, gArgs.GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams);
+
     // ********************************************************* Step 6: network initialization
     // Note that we absolutely cannot open any actual connections
     // until the very end ("start node") as the UTXO/block state
@@ -1741,9 +1748,6 @@ bool AppInitMain()
     if (!connman.Start(scheduler, connOptions)) {
         return false;
     }
-
-    // Generate coins in the background
-    GenerateRoulettecoins(gArgs.GetBoolArg("-gen", DEFAULT_GENERATE), gArgs.GetArg("-genproclimit", DEFAULT_GENERATE_THREADS), chainparams, NULL);
 
     // ********************************************************* Step 12: finished
 

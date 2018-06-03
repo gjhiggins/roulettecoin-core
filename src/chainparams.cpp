@@ -106,7 +106,7 @@ public:
         consensus.vDeployments[Consensus::DEPLOYMENT_SEGWIT].nTimeout = 1510704000; // November 15th, 2017.
 
         // The best chain should have at least this much work.
-        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000002cb971dd56d1c583c20f90");
+        consensus.nMinimumChainWork = uint256S("0x0000000000000000000000000000000000000000000000000000700000000000");
 
         // By default assume that the signatures in ancestors of this block are valid.
         consensus.defaultAssumeValid = uint256S("0x0000000000000000005214481d2d96f898e3d5416e43359c145944a909d242e0"); //506067
@@ -175,8 +175,12 @@ public:
         assert(consensus.hashGenesisBlock == uint256S("0x0000039a2d3dae2de2ebd1561d683f7fbafb7b4e3271ec6c0f70e687476779bb"));
         assert(genesis.hashMerkleRoot == uint256S("0x5620aed9a817ac49c54cbc9240954cb60027242a1bac9dc6b83589466dd244eb"));
 
-        // nodes with support for servicebits filtering should be at the top
-        // vSeeds.push_back(CDNSSeedData("", ""));
+        // Note that of those which support the service bits prefix, most only support a subset of
+        // possible options.
+        // This is fine at runtime as we'll fall back to using them as a oneshot if they dont support the
+        // service bits we want, but we should get them updated to support all service bits wanted by any
+        // release ASAP to avoid it where possible.
+        vSeeds.emplace_back("minkiz.co"); // pro tem (support x1, x5, x9, and xd)
 
         base58Prefixes[PUBKEY_ADDRESS] = std::vector<unsigned char>(1,66);
         base58Prefixes[SCRIPT_ADDRESS] = std::vector<unsigned char>(1,5);
@@ -191,6 +195,7 @@ public:
         fDefaultConsistencyChecks = false;
         fRequireStandard = true;
         fMineBlocksOnDemand = false;
+        fMiningRequiresPeers = true;
 
         checkpointData = {
             {
@@ -315,6 +320,7 @@ public:
         fDefaultConsistencyChecks = false;
         fRequireStandard = false;
         fMineBlocksOnDemand = false;
+        fMiningRequiresPeers = true;
 
 
         checkpointData = {
