@@ -116,7 +116,7 @@ endif
 #
 
 # test_roulettecoin_fuzzy binary #
-test_test_roulettecoin_fuzzy_SOURCES = test/test_roulettecoin_fuzzy.cpp
+test_test_roulettecoin_fuzzy_SOURCES = test/test_bitcoin_fuzzy.cpp
 test_test_roulettecoin_fuzzy_CPPFLAGS = $(AM_CPPFLAGS) $(BITCOIN_INCLUDES)
 test_test_roulettecoin_fuzzy_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS)
 test_test_roulettecoin_fuzzy_LDFLAGS = $(RELDFLAGS) $(AM_LDFLAGS) $(LIBTOOL_APP_LDFLAGS)
