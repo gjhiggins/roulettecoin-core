@@ -117,6 +117,7 @@ BITCOIN_CORE_H = \
   crypto/sph_whirlpool.h \
   cuckoocache.h \
   fs.h \
+  hashblock.h \
   httprpc.h \
   httpserver.h \
   indirectmap.h \
