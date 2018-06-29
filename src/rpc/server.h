@@ -196,7 +196,4 @@ std::string JSONRPCExecBatch(const JSONRPCRequest& jreq, const UniValue& vReq);
 // Retrieves any serialization flags requested in command line argument
 int RPCSerializationFlags();
 
-// Retrieves any serialization flags requested in command line argument
-int RPCSerializationFlags();
-
 #endif // BITCOIN_RPCSERVER_H

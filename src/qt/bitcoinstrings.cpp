@@ -72,9 +72,6 @@ QT_TRANSLATE_NOOP("bitcoin-core", ""
 "Error loading wallet %s. -wallet parameter must only specify a filename (not "
 "a path)."),
 QT_TRANSLATE_NOOP("bitcoin-core", ""
-QT_TRANSLATE_NOOP("bitcoin-core", ""
-"Error loading %s: You can't enable HD on a already existing non-HD wallet"),
-QT_TRANSLATE_NOOP("bitcoin-core", ""
 "Error reading %s! All keys read correctly, but transaction data or address "
 "book entries might be missing or incorrect."),
 QT_TRANSLATE_NOOP("bitcoin-core", ""
@@ -168,6 +165,8 @@ QT_TRANSLATE_NOOP("bitcoin-core", ""
 QT_TRANSLATE_NOOP("bitcoin-core", ""
 "Set lowest fee rate (in %s/kB) for transactions to be included in block "
 "creation. (default: %s)"),
+QT_TRANSLATE_NOOP("bitcoin-core", ""
+"Set maximum BIP141 block weight to this * 4. Deprecated, use blockmaxweight"),
 QT_TRANSLATE_NOOP("bitcoin-core", ""
 "Set the number of script verification threads (%u to %d, 0 = auto, <0 = "
 "leave that many cores free, default: %d)"),
