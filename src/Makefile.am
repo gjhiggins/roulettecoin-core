@@ -98,23 +98,24 @@ BITCOIN_CORE_H = \
   consensus/tx_verify.h \
   core_io.h \
   core_memusage.h \
-  crypto/sph_blake.h \
-  crypto/sph_bmw.h \
-  crypto/sph_cubehash.h \
-  crypto/sph_echo.h \
-  crypto/sph_fugue.h \
-  crypto/sph_groestl.h \
-  crypto/sph_hamsi.h \
-  crypto/sph_jh.h \
-  crypto/sph_keccak.h \
-  crypto/sph_luffa.h \
-  crypto/sph_sha2.h \
-  crypto/sph_shabal.h \
-  crypto/sph_shavite.h \
-  crypto/sph_simd.h \
-  crypto/sph_skein.h \
-  crypto/sph_types.h \
-  crypto/sph_whirlpool.h \
+  crypto/sphlib/sph_blake.h \
+  crypto/sphlib/sph_bmw.h \
+  crypto/sphlib/sph_cubehash.h \
+  crypto/sphlib/sph_echo.h \
+  crypto/sphlib/sph_fugue.h \
+  crypto/sphlib/sph_groestl.h \
+  crypto/sphlib/sph_hamsi.h \
+  crypto/sphlib/sph_haval.h \
+  crypto/sphlib/sph_jh.h \
+  crypto/sphlib/sph_keccak.h \
+  crypto/sphlib/sph_luffa.h \
+  crypto/sphlib/sph_sha2.h \
+  crypto/sphlib/sph_shabal.h \
+  crypto/sphlib/sph_shavite.h \
+  crypto/sphlib/sph_simd.h \
+  crypto/sphlib/sph_skein.h \
+  crypto/sphlib/sph_types.h \
+  crypto/sphlib/sph_whirlpool.h \
   cuckoocache.h \
   fs.h \
   hash.h \
@@ -278,57 +279,40 @@ crypto_libbitcoin_crypto_a_CXXFLAGS = $(AM_CXXFLAGS) $(PIE_FLAGS) $(PIC_FLAGS)
 crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/aes.cpp \
   crypto/aes.h \
-  crypto/aes_helper.c \
-  crypto/blake.c \
-  crypto/bmw.c \
   crypto/chacha20.cpp \
   crypto/chacha20.h \
   crypto/common.h \
-  crypto/cubehash.c \
-  crypto/echo.c \
-  crypto/fugue.c \
-  crypto/groestl.c \
-  crypto/hamsi.c \
-  crypto/haval.c \
   crypto/hmac_sha256.cpp \
   crypto/hmac_sha256.h \
   crypto/hmac_sha512.cpp \
   crypto/hmac_sha512.h \
-  crypto/jh.c \
-  crypto/keccak.c \
-  crypto/luffa.c \
   crypto/ripemd160.cpp \
   crypto/ripemd160.h \
   crypto/sha1.cpp \
   crypto/sha1.h \
   crypto/sha256.cpp \
   crypto/sha256.h \
-  crypto/sha2big.c \
   crypto/sha512.cpp \
   crypto/sha512.h \
-  crypto/shabal.c \
-  crypto/shavite.c \
-  crypto/simd.c \
-  crypto/skein.c \
-  crypto/whirlpool.c \
-  crypto/sph_blake.h \
-  crypto/sph_bmw.h \
-  crypto/sph_cubehash.h \
-  crypto/sph_echo.h \
-  crypto/sph_fugue.h \
-  crypto/sph_groestl.h \
-  crypto/sph_hamsi.h \
-  crypto/sph_haval.h \
-  crypto/sph_jh.h \
-  crypto/sph_keccak.h \
-  crypto/sph_luffa.h \
-  crypto/sph_sha2.h \
-  crypto/sph_shabal.h \
-  crypto/sph_shavite.h \
-  crypto/sph_simd.h \
-  crypto/sph_skein.h \
-  crypto/sph_types.h \
-  crypto/sph_whirlpool.h
+  crypto/sphlib/aes_helper.c \
+  crypto/sphlib/blake.c \
+  crypto/sphlib/bmw.c \
+  crypto/sphlib/cubehash.c \
+  crypto/sphlib/echo.c \
+  crypto/sphlib/fugue.c \
+  crypto/sphlib/groestl.c \
+  crypto/sphlib/hamsi.c \
+  crypto/sphlib/haval.c \
+  crypto/sphlib/jh.c \
+  crypto/sphlib/keccak.c \
+  crypto/sphlib/luffa.c \
+  crypto/sphlib/sha2big.c \
+  crypto/sphlib/sha2.c \
+  crypto/sphlib/shabal.c \
+  crypto/sphlib/shavite.c \
+  crypto/sphlib/simd.c \
+  crypto/sphlib/skein.c \
+  crypto/sphlib/whirlpool.c
 
 if USE_ASM
 crypto_libbitcoin_crypto_a_SOURCES += crypto/sha256_sse4.cpp

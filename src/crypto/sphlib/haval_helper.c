@@ -31,6 +31,12 @@
  *
  * @author   Thomas Pornin <thomas.pornin@cryptolog.com>
  */
+#include "sph_haval.h"
+#include <stddef.h>
+#include <string.h>
+#ifdef __cplusplus
+extern "C"{
+#endif
 
 #undef SPH_XCAT
 #define SPH_XCAT(a, b)    SPH_XCAT_(a, b)
@@ -188,3 +194,6 @@ SPH_XCAT(SPH_XCAT(haval, PASSES), _close)(sph_haval_context *sc,
 	haval_out(sc, dst);
 	haval_init(sc, sc->olen, sc->passes);
 }
+#ifdef __cplusplus
+}
+#endif
