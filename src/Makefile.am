@@ -117,7 +117,7 @@ BITCOIN_CORE_H = \
   crypto/sph_whirlpool.h \
   cuckoocache.h \
   fs.h \
-  hashblock.h \
+  hash.h \
   httprpc.h \
   httpserver.h \
   indirectmap.h \
@@ -289,7 +289,6 @@ crypto_libbitcoin_crypto_a_SOURCES = \
   crypto/fugue.c \
   crypto/groestl.c \
   crypto/hamsi.c \
-  crypto/hamsi_helper.c \
   crypto/haval.c \
   crypto/hmac_sha256.cpp \
   crypto/hmac_sha256.h \
